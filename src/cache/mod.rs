@@ -13,7 +13,6 @@ use std::rc::Rc;
 pub struct Cache<K, T> {
     map: HashMap<Rc<K>, Storage<T>>,
     lru: LruCache<K>,
-    #[allow(dead_code)]
     capacity: usize,
 }
 
@@ -32,12 +31,18 @@ impl<K: std::hash::Hash + Eq + Clone, T: Copy + Zero> Cache<K, T> {
 
     /// Inserts a key-value pair into the cache.
     ///
+    /// If the cache has reached its capacity, the least recently used item is evicted
+    /// before inserting the new key-value pair. This ensures that the cache size
+    /// remains within the defined limits.
+    ///
     /// # Arguments
     /// * `key` - The key associated with the value.
     /// * `value` - The value to store in the cache.
     ///
     /// # Returns
-    /// * A result indicating whether the operation was successful.
+    /// * `Ok(())` - If the insertion is successful.
+    /// * `Err(&'static str)` - If the cache is full and unable to evict items, or if
+    ///                         any other error occurs.
     pub fn set(&mut self, key: K, value: ArrayD<T>) -> Result<(), &'static str> {
         let rc_key = Rc::new(key);
         let shape = value.raw_dim();
@@ -46,6 +51,15 @@ impl<K: std::hash::Hash + Eq + Clone, T: Copy + Zero> Cache<K, T> {
         // Create the slice information directly
         let indices: Vec<SliceInfoElem> = vec![SliceInfoElem::NewAxis; shape.ndim()];
         storage.set_subarray(&indices, &value);
+
+        if self.map.len() >= self.capacity {
+            // Evict the least recently used item
+            if let Some(evicted_key) = self.lru.evict() {
+                self.map.remove(&evicted_key);
+            } else {
+                return Err("Cache is full and unable to evict items");
+            }
+        }
 
         self.lru.access(rc_key.clone());
         self.map.insert(rc_key, storage);
