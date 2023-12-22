@@ -2,7 +2,7 @@
 
 ## Overview
 
-NeuroBin is a distributed in-memory caching system, specifically optimized for handling high-dimensional data often used in AI and Large Language Models (LLMs). Our goal is to provide rapid access to frequently used data, reducing latency in data retrieval and supporting scalable, efficient AI operations. 
+NeuroBin is a distributed in-memory caching system, specifically optimized for handling high-dimensional data often used in AI and Large Language Models (LLMs). Our goal is to provide rapid access to frequently used data, reducing latency in data retrieval and supporting scalable, efficient AI operations.
 
 **Note**: NeuroBin is currently under development and is considered a Work-In-Progress (WIP).
 

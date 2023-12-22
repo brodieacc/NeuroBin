@@ -3,11 +3,13 @@ mod storage;
 
 use self::lru::LruCache;
 use self::storage::Storage;
-use ndarray::{ArrayD, Dimension, SliceInfoElem};
+use ndarray::{ArrayD, ArrayViewD, Dimension, SliceInfoElem};
 use num_traits::Zero;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+/// The `Cache` struct represents a distributed in-memory cache optimized for LLMs.
+/// It stores multi-dimensional data and uses a Least Recently Used (LRU) eviction policy.
 pub struct Cache<K, T> {
     map: HashMap<Rc<K>, Storage<T>>,
     lru: LruCache<K>,
@@ -16,6 +18,10 @@ pub struct Cache<K, T> {
 }
 
 impl<K: std::hash::Hash + Eq + Clone, T: Copy + Zero> Cache<K, T> {
+    /// Creates a new `Cache` with the specified capacity.
+    ///
+    /// # Arguments
+    /// * `capacity` - The maximum number of items the cache can hold.
     pub fn new(capacity: usize) -> Self {
         Self {
             map: HashMap::new(),
@@ -24,6 +30,14 @@ impl<K: std::hash::Hash + Eq + Clone, T: Copy + Zero> Cache<K, T> {
         }
     }
 
+    /// Inserts a key-value pair into the cache.
+    ///
+    /// # Arguments
+    /// * `key` - The key associated with the value.
+    /// * `value` - The value to store in the cache.
+    ///
+    /// # Returns
+    /// * A result indicating whether the operation was successful.
     pub fn set(&mut self, key: K, value: ArrayD<T>) -> Result<(), &'static str> {
         let rc_key = Rc::new(key);
         let shape = value.raw_dim();
@@ -38,16 +52,30 @@ impl<K: std::hash::Hash + Eq + Clone, T: Copy + Zero> Cache<K, T> {
         Ok(())
     }
 
-    pub fn get(&mut self, key: &K) -> Result<&Storage<T>, &'static str> {
+    /// Retrieves a value associated with the given key from the cache.
+    ///
+    /// # Arguments
+    /// * `key` - The key for which to retrieve the value.
+    ///
+    /// # Returns
+    /// * A result containing a reference to the value if found, or an error message if not.
+    pub fn get(&mut self, key: &K) -> Result<ArrayViewD<T>, &'static str> {
         let rc_key = Rc::new(key.clone());
-        if self.map.contains_key(&rc_key) {
+        if let Some(storage) = self.map.get(&rc_key) {
             self.lru.access(rc_key);
-            self.map.get(key).ok_or("Key not found in cache")
+            Ok(storage.get_data())
         } else {
             Err("Key not found in cache")
         }
     }
 
+    /// Deletes a key-value pair from the cache.
+    ///
+    /// # Arguments
+    /// * `key` - The key of the pair to delete.
+    ///
+    /// # Returns
+    /// * A result indicating whether the operation was successful.
     pub fn delete(&mut self, key: &K) -> Result<(), &'static str> {
         let rc_key = Rc::new(key.clone());
         if self.map.remove(&rc_key).is_some() {
