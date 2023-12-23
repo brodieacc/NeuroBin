@@ -100,3 +100,53 @@ impl<K: std::hash::Hash + Eq + Clone, T: Copy + Zero> Cache<K, T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::arr0;
+
+    #[test]
+    fn test_cache_initialization() {
+        let cache: Cache<i32, i32> = Cache::new(2);
+        assert_eq!(cache.map.len(), 0);
+        assert_eq!(cache.lru.capacity, 2);
+    }
+
+    #[test]
+    fn test_cache_set_and_get() {
+        let mut cache: Cache<i32, i32> = Cache::new(2);
+        let value = arr0(42).into_dyn();
+        assert_eq!(cache.set(1, value.clone()), Ok(()));
+        assert_eq!(cache.get(&1), Ok(value.view()));
+    }
+
+    #[test]
+    fn test_cache_eviction() {
+        let mut cache: Cache<i32, i32> = Cache::new(2);
+        let value1 = arr0(42).into_dyn();
+        let value2 = arr0(43).into_dyn();
+        let value3 = arr0(44).into_dyn();
+        assert_eq!(cache.set(1, value1.clone()), Ok(()));
+        assert_eq!(cache.set(2, value2.clone()), Ok(()));
+        assert_eq!(cache.set(3, value3.clone()), Ok(()));
+        assert_eq!(cache.get(&1), Err("Key not found in cache"));
+        assert_eq!(cache.get(&2), Ok(value2.view()));
+        assert_eq!(cache.get(&3), Ok(value3.view()));
+    }
+
+    #[test]
+    fn test_cache_delete_existing_key() {
+        let mut cache: Cache<i32, i32> = Cache::new(2);
+        let value = arr0(42).into_dyn();
+        assert_eq!(cache.set(1, value.clone()), Ok(()));
+        assert_eq!(cache.delete(&1), Ok(()));
+        assert_eq!(cache.get(&1), Err("Key not found in cache"));
+    }
+
+    #[test]
+    fn test_cache_delete_nonexistent_key() {
+        let mut cache: Cache<i32, i32> = Cache::new(2);
+        assert_eq!(cache.delete(&1), Err("Key not found in cache"));
+    }
+}

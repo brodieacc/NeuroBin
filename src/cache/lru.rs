@@ -8,7 +8,7 @@ use std::rc::Rc;
 /// It is designed for internal use within the NeuroBin library and not exposed in the public API.
 pub(crate) struct LruCache<K> {
     order: VecDeque<Rc<K>>,
-    capacity: usize,
+    pub capacity: usize,
 }
 
 /// Implementation details of the `LruCache` struct.
